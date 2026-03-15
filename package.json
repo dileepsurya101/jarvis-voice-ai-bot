@@ -22,7 +22,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf node_modules client/node_modules server/node_modules client/dist server/dist",
-    "prepare": "husky install || true"
+        "prepare": ""
   },
   "keywords": [
     "jarvis",
