@@ -1,11 +1,9 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+const handler = async (req: any, res: any) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-// Vercel serverless function - Groq API proxy
-export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).end();
   }
 
@@ -27,11 +25,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify(req.body),
     });
-
     const data = await response.json();
-    res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(response.status).json(data);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to connect to Groq API' });
   }
-}
+};
+module.exports = handler;
+
+module.exports = handler;
