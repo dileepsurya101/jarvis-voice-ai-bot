@@ -40,6 +40,16 @@ export default function App() {
     else setOrbState('idle');
   }, [speechState, isSpeaking, isLoading]);
 
+  const handleSend = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+    setInputText('');
+    const reply = await sendMessage(text);
+    // Only speak if there is a valid reply (null means error)
+    if (reply) {
+      speak(reply);
+    }
+  }, [sendMessage, speak]);
+
   // When transcript is final, auto-send
   const transcriptRef = useRef('');
   useEffect(() => {
@@ -52,16 +62,7 @@ export default function App() {
       resetTranscript();
       handleSend(text);
     }
-  }, [speechState]);
-
-  const handleSend = useCallback(async (text: string) => {
-    if (!text.trim()) return;
-    setInputText('');
-    const reply = await sendMessage(text);
-    if (reply && !reply.startsWith('Sir, the GROQ') && !reply.startsWith('Apologies')) {
-      speak(reply);
-    }
-  }, [sendMessage, speak]);
+  }, [speechState, handleSend, isLoading, resetTranscript]);
 
   const handleOrbActivate = () => {
     if (isSpeaking) { cancelSpeech(); return; }
@@ -85,16 +86,14 @@ export default function App() {
 
   return (
     <div style={{ height: '100vh', background: '#050c18', color: '#00d4ff', fontFamily: 'monospace', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
       {/* TOP HUD BAR */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 16px', background: 'rgba(5,12,24,0.95)', borderBottom: '1px solid #1a3a6a', height: 32 }}>
         <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 3 }}>J.A.R.V.I.S &nbsp;|&nbsp; JUST A RATHER VERY INTELLIGENT SYSTEM</span>
         <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 2 }}>{dateStr} &nbsp; {timeStr}</span>
       </div>
 
-      {/* MAIN CONTENT - flex column, fills viewport minus top/bottom bars */}
+      {/* MAIN CONTENT */}
       <div style={{ display: 'flex', flexDirection: 'row', flex: 1, paddingTop: 32, paddingBottom: 44, overflow: 'hidden' }}>
-
         {/* LEFT PANEL - ORB */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 16, width: 260, flexShrink: 0 }}>
           <JarvisOrb state={orbState} onActivate={handleOrbActivate} />
@@ -110,7 +109,6 @@ export default function App() {
 
         {/* RIGHT PANEL - CHAT + INPUT */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', paddingRight: 12 }}>
-
           {/* CHAT WINDOW */}
           <div style={{ flex: 1, overflow: 'hidden', marginBottom: 8 }}>
             <ChatWindow messages={messages} isLoading={isLoading} />
@@ -173,7 +171,6 @@ export default function App() {
               SEND
             </button>
           </form>
-
           {!isSupported && (
             <p style={{ fontSize: 10, color: '#aa3300', letterSpacing: 2, marginTop: 4, textAlign: 'center' }}>
               VOICE INPUT NOT SUPPORTED IN THIS BROWSER
