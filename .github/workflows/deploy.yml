@@ -9,6 +9,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel Deploy
-        run: |
-          curl -X POST "https://api.vercel.com/v1/integrations/deploy/prj_ecRciFGNMPBDIgfLbz44xOPWPpbP/RU2YCKUn14?sha=${{ github.sha }}"
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+      - name: Deploy to Vercel
+        run: vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        working-directory: ./client
