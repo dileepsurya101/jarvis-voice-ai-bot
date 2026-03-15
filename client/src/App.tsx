@@ -64,10 +64,7 @@ export default function App() {
   }, [sendMessage, speak]);
 
   const handleOrbActivate = () => {
-    if (isSpeaking) {
-      cancelSpeech();
-      return;
-    }
+    if (isSpeaking) { cancelSpeech(); return; }
     if (orbState === 'idle') {
       if (isSupported) startListening();
       else inputRef.current?.focus();
@@ -87,20 +84,20 @@ export default function App() {
   const dateStr = currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#050c12', color: '#00d4ff', fontFamily: 'monospace', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ height: '100vh', background: '#050c18', color: '#00d4ff', fontFamily: 'monospace', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* TOP HUD BAR */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 16px', borderBottom: '1px solid #1a3a6a44', background: 'rgba(5,12,24,0.95)' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 16px', background: 'rgba(5,12,24,0.95)', borderBottom: '1px solid #1a3a6a', height: 32 }}>
         <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 3 }}>J.A.R.V.I.S &nbsp;|&nbsp; JUST A RATHER VERY INTELLIGENT SYSTEM</span>
         <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 2 }}>{dateStr} &nbsp; {timeStr}</span>
       </div>
 
-      {/* MAIN CONTENT */}
-      <div style={{ paddingTop: 40, paddingBottom: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh' }}>
+      {/* MAIN CONTENT - flex column, fills viewport minus top/bottom bars */}
+      <div style={{ display: 'flex', flexDirection: 'row', flex: 1, paddingTop: 32, paddingBottom: 44, overflow: 'hidden' }}>
 
-        {/* ORB */}
-        <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <JarvisOrb state={orbState} onClick={handleOrbActivate} />
+        {/* LEFT PANEL - ORB */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 16, width: 260, flexShrink: 0 }}>
+          <JarvisOrb state={orbState} onActivate={handleOrbActivate} />
           <WaveformVisualizer isActive={isSpeaking || speechState === 'listening'} />
           <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 2, marginTop: 4 }}>
             {orbState === 'idle'
@@ -111,14 +108,16 @@ export default function App() {
           </span>
         </div>
 
-        {/* CHAT WINDOW */}
-        <div style={{ width: '100%', maxWidth: 680, marginTop: 16, padding: '0 12px', flex: 1 }}>
-          <ChatWindow messages={messages} isLoading={isLoading} />
-        </div>
+        {/* RIGHT PANEL - CHAT + INPUT */}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', paddingRight: 12 }}>
 
-        {/* INPUT ROW */}
-        <div style={{ width: '100%', maxWidth: 680, padding: '0 12px', marginTop: 8 }}>
-          <form onSubmit={handleFormSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* CHAT WINDOW */}
+          <div style={{ flex: 1, overflow: 'hidden', marginBottom: 8 }}>
+            <ChatWindow messages={messages} isLoading={isLoading} />
+          </div>
+
+          {/* INPUT ROW */}
+          <form onSubmit={handleFormSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 0' }}>
             {isSupported && (
               <button
                 type="button"
@@ -136,7 +135,7 @@ export default function App() {
                   fontSize: 14,
                 }}
               >
-                {speechState === 'listening' ? '⏹' : '🎤'}
+                {speechState === 'listening' ? '⏹' : '🍤'}
               </button>
             )}
             <input
@@ -161,7 +160,6 @@ export default function App() {
               type="submit"
               disabled={isLoading || !inputText.trim()}
               style={{
-                background: 'transparent',
                 border: '1px solid #00d4ff',
                 color: '#00d4ff',
                 padding: '8px 16px',
@@ -169,11 +167,13 @@ export default function App() {
                 cursor: 'pointer',
                 fontSize: 11,
                 letterSpacing: 2,
+                background: 'transparent',
               }}
             >
               SEND
             </button>
           </form>
+
           {!isSupported && (
             <p style={{ fontSize: 10, color: '#aa3300', letterSpacing: 2, marginTop: 4, textAlign: 'center' }}>
               VOICE INPUT NOT SUPPORTED IN THIS BROWSER
@@ -183,7 +183,7 @@ export default function App() {
       </div>
 
       {/* BOTTOM HUD BAR */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px', borderTop: '1px solid #1a3a6a44', background: 'rgba(5,12,24,0.9)' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', background: 'rgba(5,12,24,0.95)', borderTop: '1px solid #1a3a6a', height: 44 }}>
         <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 3 }}>STARK INDUSTRIES :: AI MODULE v2.0.4</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <span className="animate-hud-blink" style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', display: 'inline-block' }} />
