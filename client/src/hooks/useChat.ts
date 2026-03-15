@@ -1,8 +1,11 @@
 import { useState, useCallback } from 'react';
-import axios from 'axios';
 import { Message } from '../components/MessageBubble';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL = 'llama3-8b-8192';
+
+const SYSTEM_PROMPT = `You are J.A.R.V.I.S (Just A Rather Very Intelligent System), Tony Stark's AI assistant. You are highly intelligent, slightly formal, and occasionally witty. You address the user as "Sir" or "Ma'am". Keep responses concise and helpful.`;
 
 interface UseChatReturn {
   messages: Message[];
@@ -27,32 +30,56 @@ export function useChat(): UseChatReturn {
       content: text.trim(),
       timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
     try {
+      if (!GROQ_API_KEY) {
+        throw new Error('GROQ API key not configured');
+      }
+
       const history = messages.slice(-10).map((m) => ({
-        role: m.role,
+        role: m.role as 'user' | 'assistant',
         content: m.content,
       }));
 
-      const { data } = await axios.post(`${API_BASE}/api/chat`, {
-        message: text.trim(),
-        history,
+      const response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...history,
+            { role: 'user', content: text.trim() },
+          ],
+          max_tokens: 1024,
+          temperature: 0.7,
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const reply = data.choices?.[0]?.message?.content || 'No response received.';
 
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.reply,
+        content: reply,
         timestamp: new Date(),
       };
-
       setMessages((prev) => [...prev, assistantMsg]);
-      return data.reply;
+      return reply;
     } catch (err) {
-      const msg = 'Apologies, Sir. I\'m having trouble connecting to my systems.';
+      const msg = !GROQ_API_KEY
+        ? 'Sir, the GROQ_API_KEY is not configured. Please add VITE_GROQ_API_KEY in Vercel environment variables.'
+        : 'Apologies, Sir. I\'m having trouble connecting to my systems.';
       setError(msg);
       setMessages((prev) => [
         ...prev,
@@ -65,6 +92,5 @@ export function useChat(): UseChatReturn {
   }, [messages]);
 
   const clearMessages = useCallback(() => setMessages([]), []);
-
   return { messages, isLoading, error, sendMessage, clearMessages };
 }
