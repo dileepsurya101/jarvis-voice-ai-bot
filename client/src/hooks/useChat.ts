@@ -49,13 +49,18 @@ export function useChat(): UseChatReturn {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      let data: { reply?: string; error?: string };
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(`Failed to parse response (status ${response.status})`);
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || `API error: ${response.status}`);
+      }
+
       const reply = data.reply || 'No response received.';
-      const isError = false;
 
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,
@@ -64,13 +69,20 @@ export function useChat(): UseChatReturn {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
-      return isError ? null : reply;
+      return reply;
     } catch (err) {
-      const msg = 'Apologies, Sir. I\'m having trouble connecting to my systems.';
+      const errDetail = err instanceof Error ? err.message : String(err);
+      const msg = `Sir, connection error: ${errDetail}`;
       setError(msg);
       setMessages((prev) => [
         ...prev,
-        { id: `err-${Date.now()}`, role: 'assistant', content: msg, timestamp: new Date(), isError: true },
+        {
+          id: `err-${Date.now()}`,
+          role: 'assistant',
+          content: msg,
+          timestamp: new Date(),
+          isError: true,
+        },
       ]);
       return null;
     } finally {
