@@ -43,13 +43,11 @@ export function useSpeech(): UseSpeechReturn {
     const SpeechRecognition =
       (window as unknown as { SpeechRecognition: typeof globalThis.SpeechRecognition }).SpeechRecognition ||
       (window as unknown as { webkitSpeechRecognition: typeof globalThis.SpeechRecognition }).webkitSpeechRecognition;
-
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
-
     recognition.onstart = () => setState('listening');
     recognition.onerror = () => setState('idle');
     recognition.onend = () => setState('idle');
@@ -58,7 +56,6 @@ export function useSpeech(): UseSpeechReturn {
       const text = last[0].transcript;
       setTranscript(text);
     };
-
     recognitionRef.current = recognition;
     recognition.start();
   }, [isSupported]);
@@ -72,46 +69,75 @@ export function useSpeech(): UseSpeechReturn {
 
   const speak = useCallback((text: string, onEnd?: () => void) => {
     if (!window.speechSynthesis) return;
+
+    // Cancel any ongoing speech
     synthRef.current.cancel();
 
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 0.92;
-    utter.pitch = 0.8;
-    utter.volume = 1;
+    const doSpeak = () => {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = 0.92;
+      utter.pitch = 0.8;
+      utter.volume = 1;
 
-    // Pick best available English voice
-    const voices = voicesRef.current.length
-      ? voicesRef.current
-      : synthRef.current.getVoices();
+      // Pick best available English voice
+      const voices = voicesRef.current.length
+        ? voicesRef.current
+        : synthRef.current.getVoices();
 
-    const preferred = voices.find(
-      (v) =>
-        v.lang.startsWith('en') &&
-        (v.name.includes('Male') ||
-          v.name.includes('David') ||
-          v.name.includes('Google UK English Male') ||
-          v.name.includes('Daniel'))
-    ) || voices.find((v) => v.lang.startsWith('en'));
+      const preferred =
+        voices.find(
+          (v) =>
+            v.lang.startsWith('en') &&
+            (v.name.includes('Male') ||
+              v.name.includes('David') ||
+              v.name.includes('Google UK English Male') ||
+              v.name.includes('Daniel'))
+        ) || voices.find((v) => v.lang.startsWith('en'));
 
-    if (preferred) utter.voice = preferred;
+      if (preferred) utter.voice = preferred;
 
-    utter.onstart = () => setIsSpeaking(true);
-    utter.onend = () => {
-      setIsSpeaking(false);
-      onEnd?.();
+      utter.onstart = () => setIsSpeaking(true);
+      utter.onend = () => {
+        setIsSpeaking(false);
+        onEnd?.();
+      };
+      utter.onerror = () => {
+        setIsSpeaking(false);
+        onEnd?.();
+      };
+
+      setIsSpeaking(true);
+      synthRef.current.speak(utter);
+
+      // Chrome bug: sometimes speech synthesis stalls — kick it
+      setTimeout(() => {
+        if (synthRef.current.paused) synthRef.current.resume();
+      }, 150);
     };
-    utter.onerror = () => {
-      setIsSpeaking(false);
-      onEnd?.();
-    };
 
-    setIsSpeaking(true);
-    synthRef.current.speak(utter);
-
-    // Chrome bug: sometimes speech synthesis stalls — kick it
-    setTimeout(() => {
-      if (synthRef.current.paused) synthRef.current.resume();
-    }, 100);
+    // If voices not loaded yet, wait for them
+    if (voicesRef.current.length === 0) {
+      const voices = synthRef.current.getVoices();
+      if (voices.length > 0) {
+        voicesRef.current = voices;
+        doSpeak();
+      } else {
+        // Wait for voiceschanged event
+        const handler = () => {
+          voicesRef.current = synthRef.current.getVoices();
+          synthRef.current.removeEventListener('voiceschanged', handler);
+          doSpeak();
+        };
+        synthRef.current.addEventListener('voiceschanged', handler);
+        // Fallback: speak anyway after 300ms even without preferred voice
+        setTimeout(() => {
+          synthRef.current.removeEventListener('voiceschanged', handler);
+          doSpeak();
+        }, 300);
+      }
+    } else {
+      doSpeak();
+    }
   }, []);
 
   const cancelSpeech = useCallback(() => {
