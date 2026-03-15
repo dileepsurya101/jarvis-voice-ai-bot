@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Google Font ─── */
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --jarvis-blue: #00d4ff;
+  --jarvis-cyan: #00fff7;
+  --jarvis-gold: #ffaa00;
+  --jarvis-red: #ff3c3c;
+  --jarvis-dark: #050c18;
+  --jarvis-panel: #0a1628;
+  --jarvis-border: #1a3a6a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--jarvis-dark);
+  color: var(--jarvis-blue);
+  font-family: 'Share Tech Mono', monospace;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root { height: 100vh; width: 100vw; }
+
+/* ═══════════════════════════════════════
+   KEYFRAME ANIMATIONS
+═══════════════════════════════════════ */
+
+/* Rotating outer ring */
+@keyframes ring-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes ring-rotate-rev {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+
+/* Core orb pulsing glow */
+@keyframes orb-pulse {
+  0%   { box-shadow: 0 0 20px 4px #00d4ff44, 0 0 60px 10px #00d4ff22; opacity: 0.85; }
+  50%  { box-shadow: 0 0 40px 12px #00d4ffaa, 0 0 100px 30px #00d4ff55; opacity: 1; }
+  100% { box-shadow: 0 0 20px 4px #00d4ff44, 0 0 60px 10px #00d4ff22; opacity: 0.85; }
+}
+
+/* Listening state - stronger electric blue pulse */
+@keyframes orb-listen {
+  0%   { box-shadow: 0 0 30px 10px #00fff766, 0 0 80px 20px #00fff733; transform: scale(1); }
+  25%  { box-shadow: 0 0 60px 20px #00fff7cc, 0 0 120px 40px #00fff766; transform: scale(1.06); }
+  50%  { box-shadow: 0 0 80px 30px #00fff7ff, 0 0 160px 60px #00fff799; transform: scale(1.10); }
+  75%  { box-shadow: 0 0 60px 20px #00fff7cc, 0 0 120px 40px #00fff766; transform: scale(1.06); }
+  100% { box-shadow: 0 0 30px 10px #00fff766, 0 0 80px 20px #00fff733; transform: scale(1); }
+}
+
+/* Processing / thinking - golden spin */
+@keyframes orb-think {
+  0%   { box-shadow: 0 0 40px 15px #ffaa0066, 0 0 80px 25px #ffaa0033; filter: hue-rotate(0deg); }
+  50%  { box-shadow: 0 0 70px 25px #ffaa00cc, 0 0 130px 50px #ffaa0066; filter: hue-rotate(30deg); }
+  100% { box-shadow: 0 0 40px 15px #ffaa0066, 0 0 80px 25px #ffaa0033; filter: hue-rotate(0deg); }
+}
+
+/* Speaking - green resonance */
+@keyframes orb-speak {
+  0%   { box-shadow: 0 0 30px 8px #00ff8844, 0 0 70px 20px #00ff8822; transform: scale(1); }
+  33%  { box-shadow: 0 0 50px 18px #00ff88aa, 0 0 110px 40px #00ff8855; transform: scale(1.04); }
+  66%  { box-shadow: 0 0 65px 22px #00ff88cc, 0 0 140px 55px #00ff8877; transform: scale(1.08); }
+  100% { box-shadow: 0 0 30px 8px #00ff8844, 0 0 70px 20px #00ff8822; transform: scale(1); }
+}
+
+/* Waveform bars */
+@keyframes wave-bar {
+  0%, 100% { transform: scaleY(0.15); }
+  50%       { transform: scaleY(1); }
+}
+
+/* Radar sweep */
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Flicker / scanline */
+@keyframes flicker {
+  0%, 98%, 100% { opacity: 1; }
+  99%           { opacity: 0.85; }
+}
+
+/* HUD corner dash */
+@keyframes hud-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.3; }
+}
+
+/* Data-stream text scroll */
+@keyframes data-scroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+/* Fade-in slide-up for messages */
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════
+   UTILITY CLASSES
+═══════════════════════════════════════ */
+
+.animate-ring        { animation: ring-rotate 8s linear infinite; }
+.animate-ring-rev    { animation: ring-rotate-rev 12s linear infinite; }
+.animate-ring-fast   { animation: ring-rotate 3s linear infinite; }
+.animate-orb-idle    { animation: orb-pulse 3s ease-in-out infinite; }
+.animate-orb-listen  { animation: orb-listen 1s ease-in-out infinite; }
+.animate-orb-think   { animation: orb-think 0.8s ease-in-out infinite; }
+.animate-orb-speak   { animation: orb-speak 0.6s ease-in-out infinite; }
+.animate-radar       { animation: radar-sweep 4s linear infinite; }
+.animate-flicker     { animation: flicker 5s infinite; }
+.animate-hud-blink   { animation: hud-blink 1.2s step-end infinite; }
+.animate-data-scroll { animation: data-scroll 12s linear infinite; }
+.animate-msg-in      { animation: msg-in 0.35s ease-out forwards; }
+
+/* Waveform bar delays */
+.wave-bar { transform-origin: bottom; }
+.wave-1  { animation: wave-bar 0.6s ease-in-out infinite; }
+.wave-2  { animation: wave-bar 0.6s ease-in-out infinite 0.08s; }
+.wave-3  { animation: wave-bar 0.6s ease-in-out infinite 0.16s; }
+.wave-4  { animation: wave-bar 0.6s ease-in-out infinite 0.24s; }
+.wave-5  { animation: wave-bar 0.6s ease-in-out infinite 0.32s; }
+.wave-6  { animation: wave-bar 0.6s ease-in-out infinite 0.40s; }
+.wave-7  { animation: wave-bar 0.6s ease-in-out infinite 0.48s; }
+.wave-8  { animation: wave-bar 0.6s ease-in-out infinite 0.56s; }
+.wave-9  { animation: wave-bar 0.6s ease-in-out infinite 0.64s; }
+.wave-10 { animation: wave-bar 0.6s ease-in-out infinite 0.72s; }
+
+/* Glass panel */
+.glass {
+  background: linear-gradient(135deg, rgba(0,212,255,0.04) 0%, rgba(0,10,30,0.8) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0,212,255,0.15);
+}
+
+/* HUD border corners */
+.hud-corner {
+  position: absolute;
+  width: 18px; height: 18px;
+  border-color: var(--jarvis-blue);
+  border-style: solid;
+  opacity: 0.7;
+}
+.hud-tl { top: 0; left: 0;  border-width: 2px 0 0 2px; }
+.hud-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.hud-bl { bottom: 0; left: 0;  border-width: 0 0 2px 2px; }
+.hud-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: #0a1628; }
+::-webkit-scrollbar-thumb { background: var(--jarvis-border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--jarvis-blue); }
+
+/* Scanline overlay */
+.scanlines::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.06) 0px,
+    rgba(0,0,0,0.06) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Text glow */
+.text-glow   { text-shadow: 0 0 8px var(--jarvis-blue),  0 0 20px var(--jarvis-blue); }
+.text-glow-g { text-shadow: 0 0 8px #00ff88, 0 0 20px #00ff88; }
+.text-glow-y { text-shadow: 0 0 8px var(--jarvis-gold),  0 0 20px var(--jarvis-gold); }
+
+/* Input field */
+.jarvis-input {
+  background: rgba(0,212,255,0.04);
+  border: 1px solid var(--jarvis-border);
+  color: var(--jarvis-blue);
+  font-family: 'Share Tech Mono', monospace;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.jarvis-input:focus {
+  outline: none;
+  border-color: var(--jarvis-blue);
+  box-shadow: 0 0 0 2px rgba(0,212,255,0.15);
+}
+.jarvis-input::placeholder { color: rgba(0,212,255,0.3); }
