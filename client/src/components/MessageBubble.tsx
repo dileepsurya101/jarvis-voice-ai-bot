@@ -18,12 +18,14 @@ export default function MessageBubble({ message, isSpeaking = false }: MessageBu
   const time = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: isUser ? 'flex-end' : 'flex-start',
-      marginBottom: 12,
-      animation: 'fadeIn 0.2s ease-in',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: isUser ? 'flex-end' : 'flex-start',
+        marginBottom: 12,
+        opacity: 1,
+      }}
+    >
       {/* Jarvis avatar dot */}
       {!isUser && (
         <div style={{
@@ -38,52 +40,51 @@ export default function MessageBubble({ message, isSpeaking = false }: MessageBu
           justifyContent: 'center',
           fontSize: 11,
           fontWeight: 'bold',
-          background: 'radial-gradient(circle, #003355, #050c18)',
-          border: isSpeaking ? '1px solid #00ff88' : '1px solid #00d4ff66',
+          background: 'rgba(0,212,255,0.1)',
+          border: '1px solid rgba(0,212,255,0.3)',
           color: '#00d4ff',
-          boxShadow: isSpeaking ? '0 0 10px #00ff8888' : '0 0 6px #00d4ff44',
         }}>
           J
         </div>
       )}
 
       {/* Bubble */}
-      <div style={{ maxWidth: '72%' }}>
+      <div style={{
+        maxWidth: '75%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
+      }}>
         <div style={{
-          padding: '8px 14px',
-          borderRadius: isUser ? '12px 12px 2px 12px' : '2px 12px 12px 12px',
           background: isUser
-            ? 'rgba(0, 212, 255, 0.12)'
+            ? 'rgba(0,212,255,0.15)'
             : message.isError
-              ? 'rgba(180, 30, 30, 0.18)'
-              : 'rgba(0, 30, 60, 0.6)',
+            ? 'rgba(255,50,50,0.1)'
+            : 'rgba(0,10,30,0.6)',
           border: isUser
-            ? '1px solid rgba(0,212,255,0.3)'
+            ? '1px solid rgba(0,212,255,0.4)'
             : message.isError
-              ? '1px solid rgba(255,80,80,0.3)'
-              : '1px solid rgba(0,212,255,0.15)',
-          color: message.isError ? '#ff6666' : '#00d4ff',
+            ? '1px solid rgba(255,50,50,0.4)'
+            : '1px solid #1a3a6a',
+          borderRadius: isUser ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+          padding: '8px 14px',
           fontSize: 13,
-          fontFamily: 'monospace',
           lineHeight: 1.5,
-          letterSpacing: 0.3,
-          boxShadow: isUser
-            ? '0 0 8px rgba(0,212,255,0.1)'
-            : '0 0 8px rgba(0,30,80,0.3)',
+          color: message.isError ? '#ff6b6b' : '#c8e6ff',
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
+          boxShadow: isSpeaking ? '0 0 12px rgba(0,212,255,0.4)' : 'none',
         }}>
           {message.content}
         </div>
-        <div style={{
-          fontSize: 9,
-          color: '#1a3a6a',
-          letterSpacing: 1,
+        <span style={{
+          fontSize: 10,
+          color: '#1a4a6a',
           marginTop: 3,
-          textAlign: isUser ? 'right' : 'left',
-          paddingLeft: isUser ? 0 : 4,
-          paddingRight: isUser ? 4 : 0,
+          letterSpacing: 1,
         }}>
           {time}
-        </div>
+        </span>
       </div>
 
       {/* User avatar dot */}
