@@ -1,0 +1,67 @@
+{
+  "name": "jarvis-voice-ai-bot",
+  "version": "1.0.0",
+  "description": "A browser-based Jarvis-like AI voice assistant powered by Groq LLM, Web Speech API, React, Node.js, and MongoDB",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "start": "npm start --workspace=server",
+    "test": "npm test --workspaces",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf node_modules client/node_modules server/node_modules client/dist server/dist",
+    "prepare": "husky install || true"
+  },
+  "keywords": [
+    "jarvis",
+    "ai-assistant",
+    "voice-assistant",
+    "groq",
+    "llm",
+    "web-speech-api",
+    "react",
+    "nodejs",
+    "mongodb",
+    "typescript",
+    "vercel"
+  ],
+  "author": "Dileep Surya <contact@yukthimantra.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dileepsurya101/jarvis-voice-ai-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dileepsurya101/jarvis-voice-ai-bot/issues"
+  },
+  "homepage": "https://github.com/dileepsurya101/jarvis-voice-ai-bot#readme",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^8.0.3",
+    "prettier": "^3.2.4",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}
