@@ -1,10 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Message } from '../components/MessageBubble';
 
 const API_URL = '/api/chat';
-const MODEL = 'llama3-8b-8192';
-
-const SYSTEM_PROMPT = `You are J.A.R.V.I.S (Just A Rather Very Intelligent System), Tony Stark's AI assistant. You are highly intelligent, slightly formal, and occasionally witty. You address the user as "Sir" or "Ma'am". Keep responses concise and helpful.`;
 
 interface UseChatReturn {
   messages: Message[];
@@ -18,6 +15,10 @@ export function useChat(): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use ref to always have latest messages without stale closure
+  const messagesRef = useRef<Message[]>([]);
+  messagesRef.current = messages;
 
   const sendMessage = useCallback(async (text: string): Promise<string | null> => {
     if (!text.trim()) return null;
@@ -33,7 +34,8 @@ export function useChat(): UseChatReturn {
     setIsLoading(true);
 
     try {
-      const history = messages.slice(-10).map((m) => ({
+      // Use ref to get latest messages (avoids stale closure)
+      const history = messagesRef.current.slice(-10).map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }));
@@ -42,14 +44,8 @@ export function useChat(): UseChatReturn {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            ...history,
-            { role: 'user', content: text.trim() },
-          ],
-          max_tokens: 1024,
-          temperature: 0.7,
+          message: text.trim(),
+          history,
         }),
       });
 
@@ -58,7 +54,8 @@ export function useChat(): UseChatReturn {
       }
 
       const data = await response.json();
-      const reply = data.choices?.[0]?.message?.content || 'No response received.';
+      const reply = data.reply || 'No response received.';
+      const isError = false;
 
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,
@@ -67,19 +64,19 @@ export function useChat(): UseChatReturn {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
-      return reply;
+      return isError ? null : reply;
     } catch (err) {
       const msg = 'Apologies, Sir. I\'m having trouble connecting to my systems.';
       setError(msg);
       setMessages((prev) => [
         ...prev,
-        { id: `err-${Date.now()}`, role: 'assistant', content: msg, timestamp: new Date() },
+        { id: `err-${Date.now()}`, role: 'assistant', content: msg, timestamp: new Date(), isError: true },
       ]);
-      return msg;
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, [messages]);
+  }, []);
 
   const clearMessages = useCallback(() => setMessages([]), []);
 
