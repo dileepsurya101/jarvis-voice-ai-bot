@@ -4,6 +4,20 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama3-8b-8192';
 const SYSTEM_PROMPT = `You are J.A.R.V.I.S (Just A Rather Very Intelligent System), Tony Stark's AI assistant. You are highly intelligent, slightly formal, and occasionally witty. You address the user as "Sir" or "Ma'am". Keep responses concise and helpful.`;
 
+async function readBody(req: VercelRequest): Promise<Record<string, unknown>> {
+  // If Vercel already parsed it, return it
+  if (req.body && typeof req.body === 'object') return req.body as Record<string, unknown>;
+  // Otherwise read raw body
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+    req.on('end', () => {
+      try { resolve(JSON.parse(data)); } catch { resolve({}); }
+    });
+    req.on('error', reject);
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,15 +32,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message, history = [] } = req.body;
+  const body = await readBody(req);
+  const message = body.message as string | undefined;
+  const history = (body.history as Array<{ role: string; content: string }>) || [];
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
-    return res.status(400).json({ error: 'Message is required.' });
+    return res.status(200).json({ reply: `Sir, no message received. Body was: ${JSON.stringify(body)}` });
   }
 
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) {
-    return res.status(500).json({ reply: 'Sir, the GROQ API key is not configured. Please add GROQ_API_KEY to Vercel environment variables.' });
+    return res.status(200).json({ reply: 'Sir, the GROQ_API_KEY is not set in Vercel environment variables.' });
   }
 
   try {
@@ -54,15 +70,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!response.ok) {
       const errorMsg = data?.error?.message || JSON.stringify(data);
-      console.error('Groq error:', errorMsg);
-      return res.status(200).json({ reply: `Sir, I encountered an issue: ${errorMsg}` });
+      return res.status(200).json({ reply: `Sir, Groq API error: ${errorMsg}` });
     }
 
     const reply = data.choices?.[0]?.message?.content || 'No response received.';
     return res.status(200).json({ reply, actions: [], intent: 'general' });
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('Chat API error:', errMsg);
-    return res.status(200).json({ reply: `Sir, I encountered an unexpected error: ${errMsg}` });
+    const errMsg = error instanceof Error ? error.message : JSON.stringify(error);
+    return res.status(200).json({ reply: `Sir, unexpected error: ${errMsg}` });
   }
 }
