@@ -1,7 +1,8 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface INote extends Document {
-  title: string;
+  sessionId: string;
+  title?: string;
   content: string;
   createdAt: Date;
   updatedAt: Date;
@@ -9,7 +10,8 @@ export interface INote extends Document {
 
 const NoteSchema = new Schema<INote>(
   {
-    title: { type: String, required: true, trim: true, maxlength: 200 },
+    sessionId: { type: String, required: true },
+    title: { type: String, required: false, trim: true, maxlength: 200 },
     content: { type: String, required: true, trim: true },
   },
   { timestamps: true }

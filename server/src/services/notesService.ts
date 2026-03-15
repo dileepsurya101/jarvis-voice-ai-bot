@@ -1,10 +1,5 @@
-import { ActionItem } from './intentRouter';
-import Note from '../db/models/Note';
-
-interface ServiceResult {
-  reply: string;
-  actions: ActionItem[];
-}
+import { ActionPayload, ServiceResult } from '../types';
+import Note from '../models/Note';
 
 export const notesService = {
   async createNote(content: string, sessionId: string): Promise<ServiceResult> {
@@ -14,7 +9,8 @@ export const notesService = {
         reply: `Done, Sir. Note saved: "${content.substring(0, 60)}${content.length > 60 ? '...' : ''}".`,
         actions: [{ type: 'NOTE_SAVED', data: { id: note._id.toString(), content } }],
       };
-    } catch {
+    } catch (error) {
+      console.error('Create note error:', error);
       // Fallback if DB not available
       return {
         reply: `Done, Sir. Note saved: "${content.substring(0, 60)}".`,
@@ -37,7 +33,8 @@ export const notesService = {
         reply: `You have ${notes.length} note${notes.length > 1 ? 's' : ''}, Sir: ${list.substring(0, 200)}`,
         actions: [{ type: 'NOTE_LIST', data: { notes } }],
       };
-    } catch {
+    } catch (error) {
+      console.error('Get notes error:', error);
       return {
         reply: 'Apologies, Sir. Unable to retrieve notes at this time.',
         actions: [],
@@ -52,7 +49,8 @@ export const notesService = {
         reply: 'Done, Sir. Note deleted.',
         actions: [{ type: 'NOTE_DELETED', data: { id: noteId } }],
       };
-    } catch {
+    } catch (error) {
+      console.error('Delete note error:', error);
       return {
         reply: 'Apologies, Sir. Unable to delete that note.',
         actions: [],

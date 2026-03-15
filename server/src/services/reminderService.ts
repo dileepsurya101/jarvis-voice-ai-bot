@@ -2,7 +2,7 @@ import Reminder from '../models/Reminder';
 import { ServiceResult } from '../types';
 
 export const reminderService = {
-  async setReminder(text: string, timeStr: string): Promise<ServiceResult> {
+  async setReminder(text: string, sessionId: string, timeStr?: string): Promise<ServiceResult> {
     try {
       const timeMatch = text.match(/(\d+)\s*(minute|hour|second)/i);
       let triggerAt = new Date();
@@ -15,13 +15,14 @@ export const reminderService = {
       } else {
         triggerAt = new Date(Date.now() + 60000);
       }
-      const reminder = await Reminder.create({ text, triggerAt, done: false });
+      const reminder = await Reminder.create({ sessionId, text, triggerAt, done: false });
       const timeLabel = triggerAt.toLocaleTimeString();
       return {
         reply: `Understood, Sir. I'll remind you to "${text}" at ${timeLabel}.`,
         actions: [{ type: 'REMINDER_SET', data: reminder }],
       };
-    } catch {
+    } catch (error) {
+      console.error('Set reminder error:', error);
       return {
         reply: 'Apologies, Sir. Unable to set reminder at this time.',
         actions: [],
@@ -29,9 +30,9 @@ export const reminderService = {
     }
   },
 
-  async listReminders(): Promise<ServiceResult> {
+  async listReminders(sessionId: string): Promise<ServiceResult> {
     try {
-      const reminders = await Reminder.find({ done: false }).sort({ triggerAt: 1 });
+      const reminders = await Reminder.find({ sessionId, done: false }).sort({ triggerAt: 1 });
       if (!reminders.length) {
         return { reply: 'You have no pending reminders, Sir.', actions: [] };
       }
@@ -42,7 +43,8 @@ export const reminderService = {
         reply: `Here are your pending reminders, Sir:\n${list}`,
         actions: [{ type: 'REMINDERS_LIST', data: reminders }],
       };
-    } catch {
+    } catch (error) {
+      console.error('List reminders error:', error);
       return {
         reply: 'Apologies, Sir. Unable to fetch reminders.',
         actions: [],
@@ -57,7 +59,8 @@ export const reminderService = {
         reply: 'Reminder dismissed, Sir.',
         actions: [{ type: 'REMINDER_DISMISSED', data: { id } }],
       };
-    } catch {
+    } catch (error) {
+      console.error('Dismiss reminder error:', error);
       return {
         reply: 'Apologies, Sir. Unable to dismiss that reminder.',
         actions: [],
@@ -65,3 +68,6 @@ export const reminderService = {
     }
   },
 };
+
+// Also export as remindersService for intentRouter
+export const remindersService = reminderService;

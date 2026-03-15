@@ -2,11 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import { connectDB } from './db/connect';
-import voiceRouter from './routes/voice';
-import notesRouter from './routes/notes';
-import remindersRouter from './routes/reminders';
-import healthRouter from './routes/health';
+import mongoose from 'mongoose';
+import chatRouter from './routes/chatRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -31,10 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', limiter);
 
 // Routes
-app.use('/api/health', healthRouter);
-app.use('/api/voice', voiceRouter);
-app.use('/api/notes', notesRouter);
-app.use('/api/reminders', remindersRouter);
+app.use('/api', chatRouter);
 
 // 404 handler
 app.use('*', (_req, res) => {
@@ -51,7 +45,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 const startServer = async () => {
   try {
     if (process.env.MONGODB_URI) {
-      await connectDB();
+      await mongoose.connect(process.env.MONGODB_URI);
       console.log('Database connected');
     } else {
       console.warn('MONGODB_URI not set - running without database');
