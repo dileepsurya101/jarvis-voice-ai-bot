@@ -20,10 +20,23 @@ export function useSpeech(): UseSpeechReturn {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthRef = useRef(window.speechSynthesis);
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
 
   const isSupported =
     typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  // Load voices — they load asynchronously in most browsers
+  useEffect(() => {
+    const loadVoices = () => {
+      voicesRef.current = synthRef.current.getVoices();
+    };
+    loadVoices();
+    synthRef.current.addEventListener('voiceschanged', loadVoices);
+    return () => {
+      synthRef.current.removeEventListener('voiceschanged', loadVoices);
+    };
+  }, []);
 
   const startListening = useCallback(() => {
     if (!isSupported) return;
@@ -38,7 +51,7 @@ export function useSpeech(): UseSpeechReturn {
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => setState('listening');
-    recognition.onerror = () => setState('error');
+    recognition.onerror = () => setState('idle');
     recognition.onend = () => setState('idle');
     recognition.onresult = (event) => {
       const last = event.results[event.results.length - 1];
@@ -58,17 +71,28 @@ export function useSpeech(): UseSpeechReturn {
   const resetTranscript = useCallback(() => setTranscript(''), []);
 
   const speak = useCallback((text: string, onEnd?: () => void) => {
+    if (!window.speechSynthesis) return;
     synthRef.current.cancel();
+
     const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 0.95;
-    utter.pitch = 0.85;
+    utter.rate = 0.92;
+    utter.pitch = 0.8;
     utter.volume = 1;
 
-    // Prefer a deep English voice
-    const voices = synthRef.current.getVoices();
+    // Pick best available English voice
+    const voices = voicesRef.current.length
+      ? voicesRef.current
+      : synthRef.current.getVoices();
+
     const preferred = voices.find(
-      (v) => v.lang.startsWith('en') && (v.name.includes('Male') || v.name.includes('Google') || v.name.includes('David'))
-    );
+      (v) =>
+        v.lang.startsWith('en') &&
+        (v.name.includes('Male') ||
+          v.name.includes('David') ||
+          v.name.includes('Google UK English Male') ||
+          v.name.includes('Daniel'))
+    ) || voices.find((v) => v.lang.startsWith('en'));
+
     if (preferred) utter.voice = preferred;
 
     utter.onstart = () => setIsSpeaking(true);
@@ -76,10 +100,18 @@ export function useSpeech(): UseSpeechReturn {
       setIsSpeaking(false);
       onEnd?.();
     };
-    utter.onerror = () => setIsSpeaking(false);
+    utter.onerror = () => {
+      setIsSpeaking(false);
+      onEnd?.();
+    };
 
     setIsSpeaking(true);
     synthRef.current.speak(utter);
+
+    // Chrome bug: sometimes speech synthesis stalls — kick it
+    setTimeout(() => {
+      if (synthRef.current.paused) synthRef.current.resume();
+    }, 100);
   }, []);
 
   const cancelSpeech = useCallback(() => {
@@ -95,5 +127,15 @@ export function useSpeech(): UseSpeechReturn {
     };
   }, []);
 
-  return { transcript, state, isSupported, startListening, stopListening, resetTranscript, speak, isSpeaking, cancelSpeech };
+  return {
+    transcript,
+    state,
+    isSupported,
+    startListening,
+    stopListening,
+    resetTranscript,
+    speak,
+    isSpeaking,
+    cancelSpeech,
+  };
 }
