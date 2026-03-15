@@ -1,16 +1,7 @@
-import { ActionItem } from './intentRouter';
-
-interface TimeResult {
-  reply: string;
-  actions: ActionItem[];
-}
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
+import { ActionPayload, ServiceResult } from '../types';
 
 export const timeService = {
-  getTime(): TimeResult {
+  getTime(): ServiceResult {
     const now = new Date();
     let hours = now.getHours();
     const minutes = now.getMinutes().toString().padStart(2, '0');
@@ -24,11 +15,12 @@ export const timeService = {
     };
   },
 
-  getDate(): TimeResult {
+  getDate(): ServiceResult {
     const now = new Date();
-    const day = DAYS[now.getDay()];
+    const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
     const date = now.getDate();
-    const month = MONTHS[now.getMonth()];
+    const month = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'][now.getMonth()];
     const year = now.getFullYear();
 
     const suffix = date === 1 || date === 21 || date === 31 ? 'st'
