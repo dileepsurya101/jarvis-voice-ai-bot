@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) {
-    return res.status(500).json({ reply: 'Sir, the GROQ API key is not configured.' });
+    return res.status(500).json({ reply: 'Sir, the GROQ API key is not configured. Please add GROQ_API_KEY to Vercel environment variables.' });
   }
 
   try {
@@ -50,18 +50,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const err = await response.text();
-      console.error('Groq error:', err);
-      return res.status(500).json({ reply: 'Apologies, Sir. Groq returned an error.' });
+      const errorMsg = data?.error?.message || JSON.stringify(data);
+      console.error('Groq error:', errorMsg);
+      return res.status(200).json({ reply: `Sir, I encountered an issue: ${errorMsg}` });
     }
 
-    const data = await response.json();
     const reply = data.choices?.[0]?.message?.content || 'No response received.';
-
     return res.status(200).json({ reply, actions: [], intent: 'general' });
   } catch (error) {
-    console.error('Chat API error:', error);
-    return res.status(500).json({ reply: 'Apologies, Sir. I encountered an unexpected error.' });
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Chat API error:', errMsg);
+    return res.status(200).json({ reply: `Sir, I encountered an unexpected error: ${errMsg}` });
   }
 }
