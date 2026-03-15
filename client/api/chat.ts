@@ -17,13 +17,27 @@ const handler = async (req: any, res: any) => {
   }
 
   try {
+    let body = req.body;
+    if (typeof body === 'string') {
+      body = JSON.parse(body);
+    }
+    if (!body) {
+      const chunks: Buffer[] = [];
+      await new Promise((resolve, reject) => {
+        req.on('data', (chunk: Buffer) => chunks.push(chunk));
+        req.on('end', resolve);
+        req.on('error', reject);
+      });
+      body = JSON.parse(Buffer.concat(chunks).toString());
+    }
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(body),
     });
     const data = await response.json();
     return res.status(response.status).json(data);
@@ -31,6 +45,5 @@ const handler = async (req: any, res: any) => {
     return res.status(500).json({ error: 'Failed to connect to Groq API' });
   }
 };
-module.exports = handler;
 
 module.exports = handler;
