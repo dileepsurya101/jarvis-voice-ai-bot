@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 type State = 'idle' | 'listening' | 'thinking' | 'speaking';
 
@@ -28,96 +28,116 @@ export default function HUDRings({ state, size = 300 }: HUDRingsProps) {
   const colors = stateColorMap[state];
   const speedMult = state === 'thinking' ? 0.4 : state === 'listening' ? 0.6 : 1;
 
+  // Mouse-following cursor orb
+  const orbRef = useRef<HTMLDivElement>(null);
+  const [mousePos, setMousePos] = useState({ x: -200, y: -200 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      className="absolute inset-0 pointer-events-none"
-      style={{ filter: `drop-shadow(0 0 12px ${colors.glow})` }}
-    >
-      {/* Radar background grid */}
-      {[30, 60, 90, 120].map((r) => (
-        <circle
-          key={`grid-${r}`}
-          cx={cx} cy={cy} r={r}
-          fill="none"
-          stroke={colors.secondary}
-          strokeWidth={0.5}
-          opacity={0.2}
-        />
-      ))}
+    <>
+      {/* Mouse-following cursor orb */}
+      <div
+        ref={orbRef}
+        style={{
+          position: 'fixed',
+          left: mousePos.x,
+          top: mousePos.y,
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          border: `2px solid ${colors.primary}`,
+          boxShadow: `0 0 12px ${colors.primary}, 0 0 24px ${colors.glow}`,
+          pointerEvents: 'none',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999,
+          transition: 'border-color 0.3s, box-shadow 0.3s',
+        }}
+      >
+        <div style={{
+          position: 'absolute',
+          inset: 4,
+          borderRadius: '50%',
+          border: `1px dashed ${colors.secondary}`,
+          animation: 'ring-rotate 2s linear infinite',
+        }} />
+        <div style={{
+          position: 'absolute',
+          inset: 10,
+          borderRadius: '50%',
+          background: colors.primary,
+          opacity: 0.3,
+          animation: 'ring-rotate-rev 3s linear infinite',
+        }} />
+      </div>
 
-      {/* Cross-hairs */}
-      <line x1={cx} y1={cy - 130} x2={cx} y2={cy + 130} stroke={colors.primary} strokeWidth={0.5} opacity={0.15} />
-      <line x1={cx - 130} y1={cy} x2={cx + 130} y2={cy} stroke={colors.primary} strokeWidth={0.5} opacity={0.15} />
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="absolute inset-0 pointer-events-none"
+        style={{ filter: `drop-shadow(0 0 12px ${colors.glow})` }}
+      >
+        {/* Radar background grid */}
+        {[30, 60, 90, 120].map((r) => (
+          <circle key={r} cx={cx} cy={cy} r={r} fill="none" stroke={colors.secondary} strokeWidth="0.5" opacity="0.3" />
+        ))}
 
-      {/* Radar sweep (only when thinking/listening) */}
-      {(state === 'listening' || state === 'thinking') && (
-        <g style={{ transformOrigin: `${cx}px ${cy}px`, animation: `radar-sweep ${state === 'thinking' ? '1.2s' : '2s'} linear infinite` }}>
-          <defs>
-            <radialGradient id="sweepGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor={colors.primary} stopOpacity="0.5" />
-              <stop offset="100%" stopColor={colors.primary} stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          <path
-            d={`M ${cx} ${cy} L ${cx} ${cy - 120} A 120 120 0 0 1 ${cx + 60} ${cy - 103.9} Z`}
-            fill={`url(#sweepGrad)`}
-            opacity={0.6}
-          />
-        </g>
-      )}
+        {/* Cross-hairs */}
+        <line x1={cx} y1={cy - 135} x2={cx} y2={cy + 135} stroke={colors.secondary} strokeWidth="0.5" opacity="0.3" />
+        <line x1={cx - 135} y1={cy} x2={cx + 135} y2={cy} stroke={colors.secondary} strokeWidth="0.5" opacity="0.3" />
 
-      {/* Animated rings */}
-      {RING_CONFIGS.map((cfg, i) => (
-        <circle
-          key={i}
-          cx={cx} cy={cy}
-          r={cfg.r}
-          fill="none"
-          stroke={cfg.color}
-          strokeWidth={cfg.stroke}
-          strokeDasharray={cfg.dash}
-          opacity={cfg.opacity}
-          style={{
-            transformOrigin: `${cx}px ${cy}px`,
-            animation: `${cfg.rev ? 'ring-rotate-rev' : 'ring-rotate'} ${parseFloat(cfg.speed) / speedMult}s linear infinite`,
-          }}
-        />
-      ))}
-
-      {/* Tick marks */}
-      {Array.from({ length: 36 }, (_, i) => {
-        const angle = (i * 10 * Math.PI) / 180;
-        const r1 = 115, r2 = i % 9 === 0 ? 105 : 110;
-        return (
+        {/* Radar sweep (only when thinking/listening) */}
+        {(state === 'listening' || state === 'thinking') && (
           <line
-            key={`tick-${i}`}
-            x1={cx + r1 * Math.cos(angle)}
-            y1={cy + r1 * Math.sin(angle)}
-            x2={cx + r2 * Math.cos(angle)}
-            y2={cy + r2 * Math.sin(angle)}
-            stroke={colors.primary}
-            strokeWidth={i % 9 === 0 ? 2 : 1}
-            opacity={i % 9 === 0 ? 0.8 : 0.35}
+            x1={cx} y1={cy} x2={cx} y2={cy - 120}
+            stroke={colors.primary} strokeWidth="2" opacity="0.6"
+            style={{ transformOrigin: `${cx}px ${cy}px`, animation: `ring-rotate ${state === 'thinking' ? '2s' : '1s'} linear infinite` }}
           />
-        );
-      })}
+        )}
 
-      {/* Corner HUD data labels */}
-      <text x={cx - 125} y={cy - 120} fill={colors.primary} fontSize="8" opacity={0.5} fontFamily="Share Tech Mono, monospace">
-        SYS::ONLINE
-      </text>
-      <text x={cx + 70} y={cy - 120} fill={colors.primary} fontSize="8" opacity={0.5} fontFamily="Share Tech Mono, monospace">
-        v2.0.4
-      </text>
-      <text x={cx - 125} y={cy + 128} fill={colors.primary} fontSize="8" opacity={0.5} fontFamily="Share Tech Mono, monospace">
-        AI::ACTIVE
-      </text>
-      <text x={cx + 78} y={cy + 128} fill={colors.primary} fontSize="8" opacity={0.5} fontFamily="Share Tech Mono, monospace">
-        {state.toUpperCase()}
-      </text>
-    </svg>
+        {/* Animated rings */}
+        {RING_CONFIGS.map((cfg, i) => (
+          <circle
+            key={i}
+            cx={cx} cy={cy} r={cfg.r}
+            fill="none"
+            stroke={cfg.color}
+            strokeWidth={cfg.stroke}
+            strokeDasharray={cfg.dash}
+            opacity={cfg.opacity}
+            style={{
+              transformOrigin: `${cx}px ${cy}px`,
+              animation: `${cfg.rev ? 'ring-rotate-rev' : 'ring-rotate'} ${parseFloat(cfg.speed) / speedMult}s linear infinite`,
+            }}
+          />
+        ))}
+
+        {/* Tick marks */}
+        {Array.from({ length: 36 }, (_, i) => {
+          const angle = (i * 10 * Math.PI) / 180;
+          const r1 = 115, r2 = i % 9 === 0 ? 105 : 110;
+          return (
+            <line
+              key={i}
+              x1={cx + r1 * Math.sin(angle)} y1={cy - r1 * Math.cos(angle)}
+              x2={cx + r2 * Math.sin(angle)} y2={cy - r2 * Math.cos(angle)}
+              stroke={colors.primary} strokeWidth={i % 9 === 0 ? 2 : 1} opacity="0.5"
+            />
+          );
+        })}
+
+        {/* Corner HUD data labels */}
+        <text x="8" y="16" fill={colors.primary} fontSize="7" fontFamily="monospace" opacity="0.7">SYS::ONLINE v2.0.4</text>
+        <text x="8" y={size - 8} fill={colors.primary} fontSize="7" fontFamily="monospace" opacity="0.7">AI::ACTIVE</text>
+        <text x={size - 8} y={size - 8} fill={colors.primary} fontSize="7" fontFamily="monospace" opacity="0.7" textAnchor="end">{state.toUpperCase()}</text>
+      </svg>
+    </>
   );
 }
