@@ -1,7 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-
 type SpeechState = 'idle' | 'listening' | 'error';
-
 interface UseSpeechReturn {
   transcript: string;
   state: SpeechState;
@@ -12,8 +10,8 @@ interface UseSpeechReturn {
   speak: (text: string, onEnd?: () => void) => void;
   isSpeaking: boolean;
   cancelSpeech: () => void;
+  unlockAudio: () => void;
 }
-
 export function useSpeech(): UseSpeechReturn {
   const [transcript, setTranscript] = useState('');
   const [state, setState] = useState<SpeechState>('idle');
@@ -21,15 +19,16 @@ export function useSpeech(): UseSpeechReturn {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthRef = useRef(window.speechSynthesis);
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
-
+  const unlockedRef = useRef(false);
+  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isSupported =
     typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-
-  // Load voices — they load asynchronously in most browsers
+  // Load voices asynchronously (Chrome loads them late)
   useEffect(() => {
     const loadVoices = () => {
-      voicesRef.current = synthRef.current.getVoices();
+      const v = synthRef.current.getVoices();
+      if (v.length > 0) voicesRef.current = v;
     };
     loadVoices();
     synthRef.current.addEventListener('voiceschanged', loadVoices);
@@ -37,9 +36,36 @@ export function useSpeech(): UseSpeechReturn {
       synthRef.current.removeEventListener('voiceschanged', loadVoices);
     };
   }, []);
-
+  // Chrome TTS keep-alive: Chrome pauses speechSynthesis after ~15s of speaking
+  // Calling resume() on an interval prevents the silent stall bug
+  const startKeepAlive = useCallback(() => {
+    if (keepAliveRef.current) return;
+    keepAliveRef.current = setInterval(() => {
+      if (synthRef.current.speaking && synthRef.current.paused) {
+        synthRef.current.resume();
+      }
+    }, 5000);
+  }, []);
+  const stopKeepAlive = useCallback(() => {
+    if (keepAliveRef.current) {
+      clearInterval(keepAliveRef.current);
+      keepAliveRef.current = null;
+    }
+  }, []);
+  // Unlock audio context — must be called from a direct user interaction (click)
+  // Speaks a silent utterance to bypass Chrome autoplay policy
+  const unlockAudio = useCallback(() => {
+    if (unlockedRef.current) return;
+    unlockedRef.current = true;
+    const utter = new SpeechSynthesisUtterance(' ');
+    utter.volume = 0;
+    utter.rate = 10;
+    synthRef.current.speak(utter);
+    synthRef.current.cancel();
+  }, []);
   const startListening = useCallback(() => {
     if (!isSupported) return;
+    unlockAudio();
     const SpeechRecognition =
       (window as unknown as { SpeechRecognition: typeof globalThis.SpeechRecognition }).SpeechRecognition ||
       (window as unknown as { webkitSpeechRecognition: typeof globalThis.SpeechRecognition }).webkitSpeechRecognition;
@@ -58,101 +84,95 @@ export function useSpeech(): UseSpeechReturn {
     };
     recognitionRef.current = recognition;
     recognition.start();
-  }, [isSupported]);
-
+  }, [isSupported, unlockAudio]);
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
     setState('idle');
   }, []);
-
   const resetTranscript = useCallback(() => setTranscript(''), []);
-
   const speak = useCallback((text: string, onEnd?: () => void) => {
     if (!window.speechSynthesis) return;
-
-    // Cancel any ongoing speech
+    // Cancel any ongoing speech first
     synthRef.current.cancel();
-
+    stopKeepAlive();
     const doSpeak = () => {
       const utter = new SpeechSynthesisUtterance(text);
       utter.rate = 0.92;
       utter.pitch = 0.8;
       utter.volume = 1;
-
-      // Pick best available English voice
+      // Pick best available English voice (prefer a male/deep voice for Jarvis)
       const voices = voicesRef.current.length
         ? voicesRef.current
         : synthRef.current.getVoices();
-
       const preferred =
-        voices.find(
-          (v) =>
-            v.lang.startsWith('en') &&
-            (v.name.includes('Male') ||
-              v.name.includes('David') ||
-              v.name.includes('Google UK English Male') ||
-              v.name.includes('Daniel'))
-        ) || voices.find((v) => v.lang.startsWith('en'));
-
+        voices.find((v) =>
+          v.lang.startsWith('en') &&
+          (v.name.includes('Male') ||
+            v.name.includes('David') ||
+            v.name.includes('Google UK English Male') ||
+            v.name.includes('Daniel') ||
+            v.name.includes('Alex'))
+        ) || voices.find((v) => v.lang.startsWith('en-')) || voices[0];
       if (preferred) utter.voice = preferred;
-
-      utter.onstart = () => setIsSpeaking(true);
+      utter.onstart = () => {
+        setIsSpeaking(true);
+        startKeepAlive();
+      };
       utter.onend = () => {
         setIsSpeaking(false);
+        stopKeepAlive();
         onEnd?.();
       };
-      utter.onerror = () => {
+      utter.onerror = (e) => {
+        // 'interrupted' errors are expected when we cancel — ignore them
+        if ((e as SpeechSynthesisErrorEvent).error === 'interrupted') return;
         setIsSpeaking(false);
+        stopKeepAlive();
         onEnd?.();
       };
-
       setIsSpeaking(true);
       synthRef.current.speak(utter);
-
-      // Chrome bug: sometimes speech synthesis stalls — kick it
+      // Chrome bug: kick resume after 150ms in case it starts paused
       setTimeout(() => {
         if (synthRef.current.paused) synthRef.current.resume();
       }, 150);
     };
-
-    // If voices not loaded yet, wait for them
+    // Make sure voices are loaded before speaking
     if (voicesRef.current.length === 0) {
       const voices = synthRef.current.getVoices();
       if (voices.length > 0) {
         voicesRef.current = voices;
         doSpeak();
       } else {
-        // Wait for voiceschanged event
         const handler = () => {
           voicesRef.current = synthRef.current.getVoices();
           synthRef.current.removeEventListener('voiceschanged', handler);
           doSpeak();
         };
         synthRef.current.addEventListener('voiceschanged', handler);
-        // Fallback: speak anyway after 300ms even without preferred voice
+        // Fallback: speak after 500ms even if voiceschanged never fires
         setTimeout(() => {
           synthRef.current.removeEventListener('voiceschanged', handler);
           doSpeak();
-        }, 300);
+        }, 500);
       }
     } else {
       doSpeak();
     }
-  }, []);
-
+  }, [startKeepAlive, stopKeepAlive]);
   const cancelSpeech = useCallback(() => {
     synthRef.current.cancel();
     setIsSpeaking(false);
-  }, []);
-
+    stopKeepAlive();
+  }, [stopKeepAlive]);
   // Clean up on unmount
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
       synthRef.current.cancel();
+      stopKeepAlive();
     };
-  }, []);
-
+  }, [stopKeepAlive]);
   return {
     transcript,
     state,
@@ -163,5 +183,6 @@ export function useSpeech(): UseSpeechReturn {
     speak,
     isSpeaking,
     cancelSpeech,
+    unlockAudio,
   };
 }
