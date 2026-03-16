@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 type SpeechState = 'idle' | 'listening' | 'error';
 interface UseSpeechReturn {
   transcript: string;
+  interimTranscript: string;
   state: SpeechState;
   isSupported: boolean;
   startListening: () => void;
@@ -11,9 +12,12 @@ interface UseSpeechReturn {
   isSpeaking: boolean;
   cancelSpeech: () => void;
   unlockAudio: () => void;
+  onFinalTranscript: ((text: string) => void) | null;
+  setOnFinalTranscript: (cb: ((text: string) => void) | null) => void;
 }
 export function useSpeech(): UseSpeechReturn {
   const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [state, setState] = useState<SpeechState>('idle');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -21,10 +25,14 @@ export function useSpeech(): UseSpeechReturn {
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const unlockedRef = useRef(false);
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onFinalRef = useRef<((text: string) => void) | null>(null);
   const isSupported =
     typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-  // Load voices asynchronously (Chrome loads them late)
+  const setOnFinalTranscript = useCallback((cb: ((text: string) => void) | null) => {
+    onFinalRef.current = cb;
+  }, []);
+  // Load voices asynchronously
   useEffect(() => {
     const loadVoices = () => {
       const v = synthRef.current.getVoices();
@@ -36,8 +44,7 @@ export function useSpeech(): UseSpeechReturn {
       synthRef.current.removeEventListener('voiceschanged', loadVoices);
     };
   }, []);
-  // Chrome TTS keep-alive: Chrome pauses speechSynthesis after ~15s of speaking
-  // Calling resume() on an interval prevents the silent stall bug
+  // Chrome TTS keep-alive
   const startKeepAlive = useCallback(() => {
     if (keepAliveRef.current) return;
     keepAliveRef.current = setInterval(() => {
@@ -52,8 +59,6 @@ export function useSpeech(): UseSpeechReturn {
       keepAliveRef.current = null;
     }
   }, []);
-  // Unlock audio context — must be called from a direct user interaction (click)
-  // Speaks a silent utterance to bypass Chrome autoplay policy
   const unlockAudio = useCallback(() => {
     if (unlockedRef.current) return;
     unlockedRef.current = true;
@@ -63,36 +68,81 @@ export function useSpeech(): UseSpeechReturn {
     synthRef.current.speak(utter);
     synthRef.current.cancel();
   }, []);
+  const stopListening = useCallback(() => {
+    recognitionRef.current?.stop();
+    setState('idle');
+    setInterimTranscript('');
+  }, []);
   const startListening = useCallback(() => {
     if (!isSupported) return;
+    // Stop any ongoing recognition first
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+      recognitionRef.current = null;
+    }
     unlockAudio();
     const SpeechRecognition =
       (window as unknown as { SpeechRecognition: typeof globalThis.SpeechRecognition }).SpeechRecognition ||
       (window as unknown as { webkitSpeechRecognition: typeof globalThis.SpeechRecognition }).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
-    recognition.onstart = () => setState('listening');
-    recognition.onerror = () => setState('idle');
-    recognition.onend = () => setState('idle');
+    recognition.onstart = () => {
+      setState('listening');
+      setInterimTranscript('');
+      setTranscript('');
+    };
+    recognition.onerror = (event) => {
+      // network/no-speech errors - just go idle
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setState('error');
+      } else {
+        setState('idle');
+      }
+      setInterimTranscript('');
+    };
+    recognition.onend = () => {
+      setState('idle');
+      setInterimTranscript('');
+    };
     recognition.onresult = (event) => {
-      const last = event.results[event.results.length - 1];
-      const text = last[0].transcript;
-      setTranscript(text);
+      let interim = '';
+      let finalText = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalText += result[0].transcript;
+        } else {
+          interim += result[0].transcript;
+        }
+      }
+      if (interim) setInterimTranscript(interim);
+      if (finalText) {
+        setTranscript(finalText.trim());
+        setInterimTranscript('');
+        // Auto-submit via callback when final result received
+        if (onFinalRef.current) {
+          onFinalRef.current(finalText.trim());
+          // Stop listening after sending
+          recognition.stop();
+        }
+      }
     };
     recognitionRef.current = recognition;
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (e) {
+      setState('idle');
+    }
   }, [isSupported, unlockAudio]);
-  const stopListening = useCallback(() => {
-    recognitionRef.current?.stop();
-    setState('idle');
+  const resetTranscript = useCallback(() => {
+    setTranscript('');
+    setInterimTranscript('');
   }, []);
-  const resetTranscript = useCallback(() => setTranscript(''), []);
   const speak = useCallback((text: string, onEnd?: () => void) => {
     if (!window.speechSynthesis) return;
-    // Cancel any ongoing speech first
     synthRef.current.cancel();
     stopKeepAlive();
     const doSpeak = () => {
@@ -100,7 +150,6 @@ export function useSpeech(): UseSpeechReturn {
       utter.rate = 0.92;
       utter.pitch = 0.8;
       utter.volume = 1;
-      // Pick best available English voice (prefer a male/deep voice for Jarvis)
       const voices = voicesRef.current.length
         ? voicesRef.current
         : synthRef.current.getVoices();
@@ -124,7 +173,6 @@ export function useSpeech(): UseSpeechReturn {
         onEnd?.();
       };
       utter.onerror = (e) => {
-        // 'interrupted' errors are expected when we cancel — ignore them
         if ((e as SpeechSynthesisErrorEvent).error === 'interrupted') return;
         setIsSpeaking(false);
         stopKeepAlive();
@@ -132,12 +180,10 @@ export function useSpeech(): UseSpeechReturn {
       };
       setIsSpeaking(true);
       synthRef.current.speak(utter);
-      // Chrome bug: kick resume after 150ms in case it starts paused
       setTimeout(() => {
         if (synthRef.current.paused) synthRef.current.resume();
       }, 150);
     };
-    // Make sure voices are loaded before speaking
     if (voicesRef.current.length === 0) {
       const voices = synthRef.current.getVoices();
       if (voices.length > 0) {
@@ -150,7 +196,6 @@ export function useSpeech(): UseSpeechReturn {
           doSpeak();
         };
         synthRef.current.addEventListener('voiceschanged', handler);
-        // Fallback: speak after 500ms even if voiceschanged never fires
         setTimeout(() => {
           synthRef.current.removeEventListener('voiceschanged', handler);
           doSpeak();
@@ -165,7 +210,6 @@ export function useSpeech(): UseSpeechReturn {
     setIsSpeaking(false);
     stopKeepAlive();
   }, [stopKeepAlive]);
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
@@ -175,6 +219,7 @@ export function useSpeech(): UseSpeechReturn {
   }, [stopKeepAlive]);
   return {
     transcript,
+    interimTranscript,
     state,
     isSupported,
     startListening,
@@ -184,5 +229,7 @@ export function useSpeech(): UseSpeechReturn {
     isSpeaking,
     cancelSpeech,
     unlockAudio,
+    onFinalTranscript: onFinalRef.current,
+    setOnFinalTranscript,
   };
 }
