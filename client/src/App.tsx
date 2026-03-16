@@ -4,15 +4,12 @@ import ChatWindow from './components/ChatWindow';
 import WaveformVisualizer from './components/WaveformVisualizer';
 import { useSpeech } from './hooks/useSpeech';
 import { useChat } from './hooks/useChat';
-
 const CLOCK_TICK = 1000;
-
 export default function App() {
   const [orbState, setOrbState] = useState<OrbState>('idle');
   const [inputText, setInputText] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const inputRef = useRef<HTMLInputElement>(null);
-
   const { messages, isLoading, sendMessage } = useChat();
   const {
     transcript,
@@ -25,13 +22,11 @@ export default function App() {
     isSpeaking,
     cancelSpeech,
   } = useSpeech();
-
   // Clock
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), CLOCK_TICK);
     return () => clearInterval(t);
   }, []);
-
   // Map speech state to orb state
   useEffect(() => {
     if (speechState === 'listening') setOrbState('listening');
@@ -39,7 +34,6 @@ export default function App() {
     else if (isLoading) setOrbState('thinking');
     else setOrbState('idle');
   }, [speechState, isSpeaking, isLoading]);
-
   const handleSend = useCallback(async (text: string) => {
     if (!text.trim()) return;
     setInputText('');
@@ -49,13 +43,11 @@ export default function App() {
       speak(reply);
     }
   }, [sendMessage, speak]);
-
   // When transcript is final, auto-send
   const transcriptRef = useRef('');
   useEffect(() => {
     transcriptRef.current = transcript;
   }, [transcript]);
-
   useEffect(() => {
     if (speechState === 'idle' && transcriptRef.current && !isLoading) {
       const text = transcriptRef.current;
@@ -63,7 +55,6 @@ export default function App() {
       handleSend(text);
     }
   }, [speechState, handleSend, isLoading, resetTranscript]);
-
   const handleOrbActivate = () => {
     if (isSpeaking) { cancelSpeech(); return; }
     if (orbState === 'idle') {
@@ -75,15 +66,12 @@ export default function App() {
       cancelSpeech();
     }
   };
-
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim()) handleSend(inputText);
   };
-
   const timeStr = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const dateStr = currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-
   return (
     <div style={{ height: '100vh', background: '#050c18', color: '#00d4ff', fontFamily: 'monospace', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* TOP HUD BAR */}
@@ -91,7 +79,6 @@ export default function App() {
         <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 3 }}>J.A.R.V.I.S &nbsp;|&nbsp; JUST A RATHER VERY INTELLIGENT SYSTEM</span>
         <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 2 }}>{dateStr} &nbsp; {timeStr}</span>
       </div>
-
       {/* MAIN CONTENT */}
       <div style={{ display: 'flex', flexDirection: 'row', flex: 1, paddingTop: 32, paddingBottom: 44, overflow: 'hidden' }}>
         {/* LEFT PANEL - ORB */}
@@ -106,14 +93,12 @@ export default function App() {
               : 'JARVIS IS RESPONDING...'}
           </span>
         </div>
-
         {/* RIGHT PANEL - CHAT + INPUT */}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', paddingRight: 12 }}>
-          {/* CHAT WINDOW */}
-          <div style={{ flex: 1, overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', paddingRight: 12, minWidth: 0 }}>
+          {/* CHAT WINDOW - minHeight:0 fixes flex child collapsing */}
+          <div style={{ flex: 1, overflow: 'hidden', marginBottom: 8, minHeight: 0 }}>
             <ChatWindow messages={messages} isLoading={isLoading} />
           </div>
-
           {/* INPUT ROW */}
           <form onSubmit={handleFormSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 0' }}>
             {isSupported && (
@@ -178,7 +163,6 @@ export default function App() {
           )}
         </div>
       </div>
-
       {/* BOTTOM HUD BAR */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', background: 'rgba(5,12,24,0.95)', borderTop: '1px solid #1a3a6a', height: 44 }}>
         <span style={{ fontSize: 9, color: '#1a3a6a', letterSpacing: 3 }}>STARK INDUSTRIES :: AI MODULE v2.0.4</span>
