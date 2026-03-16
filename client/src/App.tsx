@@ -21,6 +21,7 @@ export default function App() {
     speak,
     isSpeaking,
     cancelSpeech,
+    unlockAudio,
   } = useSpeech();
   // Clock
   useEffect(() => {
@@ -38,7 +39,6 @@ export default function App() {
     if (!text.trim()) return;
     setInputText('');
     const reply = await sendMessage(text);
-    // Only speak if there is a valid reply (null means error)
     if (reply) {
       speak(reply);
     }
@@ -56,6 +56,8 @@ export default function App() {
     }
   }, [speechState, handleSend, isLoading, resetTranscript]);
   const handleOrbActivate = () => {
+    // Unlock audio on every orb click (user gesture)
+    unlockAudio();
     if (isSpeaking) { cancelSpeech(); return; }
     if (orbState === 'idle') {
       if (isSupported) startListening();
@@ -68,6 +70,8 @@ export default function App() {
   };
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Unlock audio on SEND (user gesture) so TTS works after API responds
+    unlockAudio();
     if (inputText.trim()) handleSend(inputText);
   };
   const timeStr = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -95,7 +99,7 @@ export default function App() {
         </div>
         {/* RIGHT PANEL - CHAT + INPUT */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', paddingRight: 12, minWidth: 0 }}>
-          {/* CHAT WINDOW - minHeight:0 fixes flex child collapsing */}
+          {/* CHAT WINDOW - minHeight:0 fixes flex child collapsing so messages are visible */}
           <div style={{ flex: 1, overflow: 'hidden', marginBottom: 8, minHeight: 0 }}>
             <ChatWindow messages={messages} isLoading={isLoading} />
           </div>
@@ -105,6 +109,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
+                  unlockAudio();
                   if (speechState === 'listening') stopListening();
                   else startListening();
                 }}
